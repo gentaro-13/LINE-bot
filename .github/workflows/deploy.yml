@@ -3,31 +3,50 @@ name: Deploy to Cloud Run
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main        # ← デプロイを走らせたいブランチ名
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
+    # GitHub → GCP 認証で OIDC を使うには下記 2 行が推奨
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
     steps:
-    - uses: actions/checkout@v4
+      # 1) ソース取得
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-    - uses: google-github-actions/auth@v2
-      with:
-        credentials_json: ${{ secrets.GCP_SA_KEY }}
+      # 2) GCP 認証（サービスアカウント JSON を使う場合）
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    - uses: google-github-actions/setup-gcloud@v2
-      with:
-        project_id: ${{ secrets.GCP_PROJECT }}
+      # 3) gcloud CLI セットアップ
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
 
-    - id: deploy
-      uses: google-github-actions/deploy-cloudrun@v2
-      with:
-        service: line-bot
-        region: ${{ secrets.REGION }}
-        source: .
-        flags: --allow-unauthenticated     # ← ここで公開
-        secrets: |
-          LINE_CHANNEL_ACCESS_TOKEN=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_ACCESS_TOKEN:latest
-          LINE_CHANNEL_SECRET=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_SECRET:latest
-          DIFY_KEY=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_KEY:latest
-          DIFY_BASE=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_BASE:latest
+      # 4) Cloud Build → Cloud Run デプロイ
+      - id: deploy
+        name: Build & Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: line-bot                      # Cloud Run サービス名
+          region: ${{ secrets.REGION }}          # 例: asia-northeast1
+          source: .                              # Buildpacks 自動ビルド
+          flags: --allow-unauthenticated         # 認証なしで公開
+          secrets: |                             # Secret Manager → 環境変数
+            LINE_CHANNEL_ACCESS_TOKEN=LINE_CHANNEL_ACCESS_TOKEN:latest
+            LINE_CHANNEL_SECRET=LINE_CHANNEL_SECRET:latest
+            DIFY_KEY=DIFY_KEY:latest
+            DIFY_BASE=DIFY_BASE:latest
+
+      # 5) デプロイ後、URL を表示（ログで確認用）
+      - name: Show Service URL
+        run: echo "Cloud Run URL => ${{ steps.deploy.outputs.url }}"

@@ -1,0 +1,5 @@
+fastapi
+line-bot-sdk[aio]==2.4.3   
+uvicorn[standard]
+httpx
+python-dotenv

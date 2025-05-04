@@ -1,0 +1,36 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ main ]   # ← 開発ブランチに合わせてもOK
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # ① GCP にログイン
+    - uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    # ② gcloud をセット
+    - uses: google-github-actions/setup-gcloud@v2
+      with:
+        project_id: ${{ secrets.GCP_PROJECT }}
+
+    # ③ Build & Deploy
+    - id: deploy
+      uses: google-github-actions/deploy-cloudrun@v2
+      with:
+        service: line-bot
+        region: ${{ secrets.REGION }}
+        source: .
+        allow_unauthenticated: true
+        secrets: >
+          LINE_CHANNEL_ACCESS_TOKEN=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_ACCESS_TOKEN:latest,
+          LINE_CHANNEL_SECRET=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_SECRET:latest,
+          DIFY_KEY=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_KEY:latest,
+          DIFY_BASE=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_BASE:latest

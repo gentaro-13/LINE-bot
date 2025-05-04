@@ -1,0 +1,7 @@
+{
+    "image": "mcr.microsoft.com/devcontainers/python:3.11-bookworm",
+    "features": {
+      "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    },
+    "postCreateCommand": "pip install -r requirements.txt"
+  }

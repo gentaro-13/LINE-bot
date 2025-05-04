@@ -1,59 +1,56 @@
-# run.py  ★丸ごと貼り換えてOK
-import os, httpx
+# run.py  ── Cloud Run 用 FastAPI + LINE SDK（同期版）
+import os
+import httpx
 from fastapi import FastAPI, Request
+from fastapi.responses import PlainTextResponse
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 
 app = FastAPI()
 
-# --- LINE SDK (同期版) ---
+# ---- LINE SDK（同期） ----
 line_api = LineBotApi(os.getenv("LINE_CHANNEL_ACCESS_TOKEN"))
-handler   = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
+handler  = WebhookHandler(os.getenv("LINE_CHANNEL_SECRET"))
 
-# --- HTTP クライアント (Dify 用に async で使う) ---
-http_client = httpx.AsyncClient()
+# ---- Dify 用 HTTP クライアント（同期） ----
+http_client = httpx.Client()
+
+# ──────────────── ルート定義 ────────────────
+@app.get("/callback")
+def callback_health() -> PlainTextResponse:         # ブラウザ確認用
+    return PlainTextResponse("OK", status_code=200)
 
 @app.post("/callback")
-async def webhook(request: Request):
+async def callback(request: Request):
     body = await request.body()
     sig  = request.headers.get("X-Line-Signature", "")
     try:
-        handler.handle(body.decode(), sig)   # 同期呼び出し
-    except InvalidSignatureError:
-        # LINE の検証要求などはダミー署名なので握りつぶす
+        handler.handle(body.decode(), sig)          # ★同期呼び出し
+    except InvalidSignatureError:                   # 検証イベントなどは握りつぶす
         return "ok"
     return "ok"
 
-@app.get("/callback")           # ★接続確認(GET)用
-def callback_health():
-    return "ok"
-
+# ---- LINE からのメッセージイベント ----
 @handler.add(MessageEvent, message=TextMessage)
-async def handle_message(event):
+def handle_message(event: MessageEvent):
     user_id = event.source.user_id
     text    = event.message.text
 
-    # --- Dify Chatflow を呼び出す（非同期）---
-    resp = await http_client.post(
+    # === Dify Chatflow 呼び出し（同期） ===
+    resp = http_client.post(
         f"{os.getenv('DIFY_BASE')}/v1/chat-messages",
         headers={"Authorization": f"Bearer {os.getenv('DIFY_KEY')}"},
         json={
             "inputs": {"text": text},
-            "query": text,
-            "user":  user_id
+            "query":  text,
+            "user":   user_id
         }
     )
     answer = resp.json().get("answer", "すみません、うまく答えられませんでした。")
 
-    # --- LINE に同期で返信 ---
+    # === LINE へ返信（同期） ===
     line_api.reply_message(
         event.reply_token,
         TextSendMessage(text=answer)
     )
-
-from fastapi.responses import PlainTextResponse
-
-@app.get("/callback")
-def callback_health():
-    return PlainTextResponse("OK", status_code=200)

@@ -3,3 +3,4 @@ line-bot-sdk==2.4.3
 uvicorn[standard]
 httpx
 python-dotenv
+aiohttp==3.9.1

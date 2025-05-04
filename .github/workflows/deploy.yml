@@ -8,32 +8,26 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
 
-    # ① 認証
     - uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    # ② gcloud セット
     - uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ secrets.GCP_PROJECT }}
 
-    # ③ Build & Deploy
     - id: deploy
       uses: google-github-actions/deploy-cloudrun@v2
       with:
         service: line-bot
         region: ${{ secrets.REGION }}
         source: .
-        # ← ここでパブリック公開
-        flags: --allow-unauthenticated
-        # ← Secret Manager → 環境変数 マッピング
+        flags: --allow-unauthenticated     # ← ここで公開
         secrets: |
-          LINE_CHANNEL_ACCESS_TOKEN=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_ACCESS_TOKEN/versions/latest
-          LINE_CHANNEL_SECRET=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_SECRET/versions/latest
-          DIFY_KEY=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_KEY/versions/latest
-          DIFY_BASE=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_BASE/versions/latest
+          LINE_CHANNEL_ACCESS_TOKEN=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_ACCESS_TOKEN:latest
+          LINE_CHANNEL_SECRET=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_SECRET:latest
+          DIFY_KEY=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_KEY:latest
+          DIFY_BASE=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_BASE:latest

@@ -51,3 +51,9 @@ async def handle_message(event):
         event.reply_token,
         TextSendMessage(text=answer)
     )
+
+from fastapi.responses import PlainTextResponse
+
+@app.get("/callback")
+def callback_health():
+    return PlainTextResponse("OK", status_code=200)

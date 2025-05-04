@@ -1,8 +1,9 @@
+# .github/workflows/deploy.yml
 name: Deploy to Cloud Run
 
 on:
   push:
-    branches: [ main ]   # ← 開発ブランチに合わせてもOK
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -11,12 +12,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    # ① GCP にログイン
+    # ① 認証
     - uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-    # ② gcloud をセット
+    # ② gcloud セット
     - uses: google-github-actions/setup-gcloud@v2
       with:
         project_id: ${{ secrets.GCP_PROJECT }}
@@ -28,9 +29,11 @@ jobs:
         service: line-bot
         region: ${{ secrets.REGION }}
         source: .
-        allow_unauthenticated: true
-        secrets: >
-          LINE_CHANNEL_ACCESS_TOKEN=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_ACCESS_TOKEN:latest,
-          LINE_CHANNEL_SECRET=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_SECRET:latest,
-          DIFY_KEY=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_KEY:latest,
-          DIFY_BASE=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_BASE:latest
+        # ← ここでパブリック公開
+        flags: --allow-unauthenticated
+        # ← Secret Manager → 環境変数 マッピング
+        secrets: |
+          LINE_CHANNEL_ACCESS_TOKEN=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_ACCESS_TOKEN/versions/latest
+          LINE_CHANNEL_SECRET=projects/${{ secrets.GCP_PROJECT }}/secrets/LINE_CHANNEL_SECRET/versions/latest
+          DIFY_KEY=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_KEY/versions/latest
+          DIFY_BASE=projects/${{ secrets.GCP_PROJECT }}/secrets/DIFY_BASE/versions/latest

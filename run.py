@@ -47,6 +47,9 @@ def handle_message(event: MessageEvent):
             "user":   user_id
         }
     )
+    print("Dify status:", resp.status_code, flush=True)
+    print("Dify raw:", resp.text[:200], flush=True)
+    
     answer = resp.json().get("answer", "すみません、うまく答えられませんでした。")
 
     # === LINE へ返信（同期） ===
